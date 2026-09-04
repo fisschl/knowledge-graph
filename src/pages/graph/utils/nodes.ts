@@ -21,6 +21,7 @@ export class GraphNode extends Container {
 
   constructor(options: { data: Record<string, any> }) {
     super();
+    this.cullable = true;
     this.data = options.data;
     this.addChild(this.circle);
     this.drawCircle();

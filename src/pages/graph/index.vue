@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { ForceGraph } from "./utils/world";
+import { extensions, CullerPlugin } from 'pixi.js';
+
+extensions.add(CullerPlugin);
 
 const hostElement = useTemplateRef<HTMLDivElement>("graph-host");
 const world = shallowRef<ForceGraph | null>(null);
