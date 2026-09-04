@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { extensions, CullerPlugin } from "pixi.js";
 import { ForceGraph } from "./utils/world";
-import { extensions, CullerPlugin } from 'pixi.js';
 
 extensions.add(CullerPlugin);
 

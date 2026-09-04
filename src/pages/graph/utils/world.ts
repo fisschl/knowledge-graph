@@ -3,7 +3,7 @@ import { zoom, zoomIdentity, type ZoomBehavior } from "d3-zoom";
 import { Application, Container, FederatedPointerEvent, type ApplicationOptions } from "pixi.js";
 import { EdgesLayer } from "./edges";
 import { ForceLayout } from "./layout";
-import { GraphNode,  } from "./nodes";
+import { GraphNode } from "./nodes";
 
 export class ForceGraph extends Application {
   edgesLayer = new EdgesLayer();
@@ -51,7 +51,7 @@ export class ForceGraph extends Application {
           data.x = local.x + dragOffsetX;
           data.y = local.y + dragOffsetY;
           node.position.set(data.x, data.y);
-          this.edgesLayer.drawEdges();
+          this.edgesLayer.drawEdgesOf(data.id);
         };
 
         const endDrag = () => {
