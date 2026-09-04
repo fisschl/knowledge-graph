@@ -90,12 +90,10 @@ export class EdgesLayer extends Container {
    */
   setAdjacency(edge: Record<string, any>) {
     for (const item of [edge.source, edge.target]) {
-      if (!item) continue;
-      const nodeId = typeof item === "string" ? item : item.id;
-      if (!nodeId) continue;
-      const list = this.adjacency.get(nodeId);
+      if (!item || !item.id) continue;
+      const list = this.adjacency.get(item.id);
       if (list) list.push(edge);
-      else this.adjacency.set(nodeId, [edge]);
+      else this.adjacency.set(item.id, [edge]);
     }
   }
 
