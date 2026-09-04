@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BitmapFont, extensions, CullerPlugin, TextStyle } from "pixi.js";
+import { BitmapFont, extensions, CullerPlugin } from "pixi.js";
 import { ForceGraph } from "./utils/world";
 
 extensions.add(CullerPlugin);
@@ -21,14 +21,16 @@ const initWorld = async () => {
   if (!Array.isArray(nodes)) return;
   const chars = nodes.map((data) => data.label).join();
 
-  await document.fonts.load('16px "Noto Sans SC"', chars);
+  await document.fonts.load('24px "Noto Sans SC"', chars);
+  // 烤白 + 超采样：字形以 24px 烘焙成白色图集，
+  // 渲染时由各 TextStyle 的 fill 作为 tint 上色，同一图集可渲染任意颜色
   BitmapFont.install({
     name: "Noto Sans SC",
-    style: new TextStyle({
+    style: {
       fontFamily: "Noto Sans SC",
-      fontSize: 20,
-      fill: "#303133",
-    }),
+      fontSize: 24,
+      fill: "#ffffff",
+    },
     chars,
     resolution: devicePixelRatio,
   });
