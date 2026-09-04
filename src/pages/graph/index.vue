@@ -13,7 +13,7 @@ const destroy = () => {
 const isLoading = ref(false);
 
 const initWorld = async () => {
-  const response = await fetch("https://bronya.world/datasets/medical_graph_6k.json");
+  const response = await fetch("https://bronya.world/datasets/medical_graph_3k.json");
   const data = await response.json();
   if (!hostElement.value) return;
   destroy();
