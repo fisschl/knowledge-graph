@@ -88,7 +88,7 @@ export class ForceGraph extends Application {
   }
 
   destroy() {
-    this.layout.destroy();
+    this.layout.stop();
     super.destroy();
   }
 

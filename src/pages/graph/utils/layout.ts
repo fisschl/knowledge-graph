@@ -12,7 +12,7 @@ export class ForceLayout {
   simulation?: Simulation<Record<string, any>, undefined>;
 
   execute(data: { nodes: Record<string, any>[]; edges: Record<string, any>[] }): Promise<void> {
-    this.destroy();
+    this.stop();
     const linkForce = forceLink<any, any>()
       .id((node) => node.id)
       .distance(200);
@@ -22,7 +22,7 @@ export class ForceLayout {
       .force("collide", forceCollide(40))
       .force("x", forceX(0).strength(0.02))
       .force("y", forceY(0).strength(0.02))
-      .alphaDecay(0.01);
+      .alphaDecay(0.03)
     this.simulation.nodes(data.nodes);
     linkForce.links(data.edges);
     return new Promise<void>((resolve) => {
@@ -32,7 +32,7 @@ export class ForceLayout {
     });
   }
 
-  destroy() {
+  stop() {
     // 只停表不 resolve:销毁后视图同步不应再执行
     this.simulation?.stop();
   }
