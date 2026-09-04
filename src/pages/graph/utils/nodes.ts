@@ -1,4 +1,4 @@
-import { Container, Graphics, Text, TextStyle } from "pixi.js";
+import { BitmapText, Container, Graphics, TextStyle } from "pixi.js";
 
 const defaultLabelStyle = new TextStyle({
   fontFamily: "Noto Sans SC",
@@ -16,7 +16,7 @@ export const defaultNodeStyle = {
 export class GraphNode extends Container {
   data: Record<string, any>;
   circle = new Graphics();
-  text = new Text();
+  text = new BitmapText();
   textBackground = new Graphics();
 
   constructor(options: { data: Record<string, any> }) {

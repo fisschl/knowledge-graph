@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { extensions, CullerPlugin } from "pixi.js";
+import { BitmapFont, extensions, CullerPlugin } from "pixi.js";
 import { ForceGraph } from "./utils/world";
 
 extensions.add(CullerPlugin);
@@ -17,6 +17,17 @@ const initWorld = async () => {
   const response = await fetch("https://bronya.world/datasets/medical_graph_3k.json");
   const data = await response.json();
   if (!hostElement.value) return;
+  const { nodes } = data;
+  if (!Array.isArray(nodes)) return;
+  const chars = nodes.map((data) => data.label).join();
+
+  await document.fonts.load('16px "Noto Sans SC"', chars);
+  BitmapFont.install({
+    name: "Noto Sans SC",
+    style: { fontFamily: "Noto Sans SC" },
+    chars,
+    resolution: devicePixelRatio,
+  });
   destroy();
 
   const instance = new ForceGraph();
