@@ -71,15 +71,7 @@ export class ForceGraph extends Application {
     }
 
     this.edgesLayer.setEdges(options.edges);
-    const layoutDone = this.layout.execute(options);
-    // 播种坐标先可见;布局无动画后台计算,收敛后一次性刷新
-    this.syncViews();
-    await layoutDone;
-    this.syncViews();
-  }
-
-  /** 数据坐标刷到视图:播种后、布局收敛后、拖动时各调一次 */
-  private syncViews() {
+    await this.layout.execute(options);
     for (const node of this.nodes.values()) {
       const { x, y } = node.data;
       node.position.set(x, y);
