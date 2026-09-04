@@ -9,7 +9,7 @@ import {
 import { forceLink } from "d3-force";
 
 export class ForceLayout {
-  simulation?: Simulation<Record<string, any>, undefined>;
+  private simulation?: Simulation<any, any>;
 
   execute(data: { nodes: Record<string, any>[]; edges: Record<string, any>[] }): Promise<void> {
     this.stop();
@@ -22,18 +22,21 @@ export class ForceLayout {
       .force("collide", forceCollide(40))
       .force("x", forceX(0).strength(0.02))
       .force("y", forceY(0).strength(0.02))
-      .alphaDecay(0.03)
+      .alphaDecay(0.03);
     this.simulation.nodes(data.nodes);
     linkForce.links(data.edges);
-    return new Promise<void>((resolve) => {
-      // 模拟可能已收敛停住,重新加热;alpha 降到阈值自动停表并触发 end
-      this.simulation?.on("end", resolve);
-      this.simulation?.alpha(1).restart();
-    });
+    this.simulation.stop();
+    return new Promise<void>((resolve) => this.nextTick(resolve));
+  }
+
+  private nextTick(resolve: () => void) {
+    if (!this.simulation || this.simulation.alpha() <= this.simulation.alphaMin()) return resolve();
+    for (let i = 0; i < 10; i++) this.simulation.tick();
+    requestAnimationFrame(() => this.nextTick(resolve));
   }
 
   stop() {
-    // 只停表不 resolve:销毁后视图同步不应再执行
     this.simulation?.stop();
+    this.simulation = undefined;
   }
 }
