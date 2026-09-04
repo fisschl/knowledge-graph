@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { BitmapFont, extensions, CullerPlugin } from "pixi.js";
+import { BitmapFont } from "pixi.js";
 import { ForceGraph } from "./utils/world";
-
-extensions.add(CullerPlugin);
 
 const hostElement = useTemplateRef<HTMLDivElement>("graph-host");
 const world = shallowRef<ForceGraph | null>(null);

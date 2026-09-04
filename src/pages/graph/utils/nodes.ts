@@ -54,6 +54,5 @@ export class GraphNode extends Container {
       });
     });
     this.on("destroyed", () => scope.stop());
-    this.cullable = true;
   }
 }
