@@ -3,9 +3,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host --mode development",
-    "build:development": "vite build --mode development",
-    "build:production": "vite build --mode production",
+    "dev": "vite --host",
+    "build": "vite build",
     "lint": "oxlint --fix && eslint --fix --cache && oxfmt && vue-tsc --build"
   },
   "dependencies": {
