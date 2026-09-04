@@ -5,15 +5,6 @@ import { EdgesLayer } from "./edges";
 import { ForceLayout } from "./layout";
 import { Node } from "./nodes";
 
-/**
- * 将点随机放到以原点为圆心、radius 为半径的圆周上(角度直接随机取,不追求均匀分布)
- */
-const placeOnCircle = (point: Record<string, any>, radius: number) => {
-  const angle = Math.random() * Math.PI * 2;
-  point.x = radius * Math.cos(angle);
-  point.y = radius * Math.sin(angle);
-};
-
 export class ForceGraph extends Application {
   edgesLayer = new EdgesLayer();
   nodes = new Map<string, Node>();
@@ -34,8 +25,13 @@ export class ForceGraph extends Application {
     this.nodes.clear();
 
     // 初始播种:随机散布在大圆周上,半径随节点数线性增长(2πR = n·SEED_ARC),不钳制屏幕
+    // 将点随机放到以原点为圆心、radius 为半径的圆周上(角度直接随机取,不追求均匀分布)
     const radius = (options.nodes.length * 100) / (Math.PI * 2);
-    for (const data of options.nodes) placeOnCircle(data, radius);
+    for (const data of options.nodes) {
+      const angle = Math.random() * Math.PI * 2;
+      data.x = radius * Math.cos(angle);
+      data.y = radius * Math.sin(angle);
+    }
 
     for (const data of options.nodes) {
       const node = new Node({ data });
@@ -68,6 +64,8 @@ export class ForceGraph extends Application {
         stage.on("pointerup", endDrag);
         canvas.addEventListener("pointerleave", endDrag);
       });
+      const { x, y } = node.data;
+      node.position.set(x, y);
     }
 
     this.edgesLayer.setEdges(options.edges);
