@@ -30,7 +30,7 @@ const initWorld = async () => {
     preference: "webgpu",
   });
   hostElement.value.appendChild(instance.canvas);
-  instance.setData(data);
+  await instance.setData(data);
 };
 
 onMounted(async () => {

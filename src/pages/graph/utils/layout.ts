@@ -17,14 +17,22 @@ export class ForceLayout {
     this.simulation.force("link", this.linkForce);
   }
 
-  setData(options: { nodes: Record<string, any>[]; edges: Record<string, any>[] }) {
-    this.simulation.nodes(options.nodes);
-    this.linkForce.links(options.edges);
-    // 模拟可能已收敛停住,重新加热
-    this.simulation?.alpha(1).restart();
+  /**
+   * 启动布局计算,收敛后 promise 落定。
+   * nodes() 必须先于 links():links setter 会立即解析 source/target 节点引用
+   */
+  execute(data: { nodes: Record<string, any>[]; edges: Record<string, any>[] }): Promise<void> {
+    this.simulation.nodes(data.nodes);
+    this.linkForce.links(data.edges);
+    return new Promise<void>((resolve) => {
+      // 模拟可能已收敛停住,重新加热;alpha 降到阈值自动停表并触发 end
+      this.simulation.on("end", resolve);
+      this.simulation.alpha(1).restart();
+    });
   }
 
   destroy() {
+    // 只停表不 resolve:销毁后视图同步不应再执行
     this.simulation.stop();
   }
 }

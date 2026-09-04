@@ -28,7 +28,7 @@ export class ForceGraph extends Application {
     this.stage.eventMode = "static";
   }
 
-  setData(options: { nodes: Record<string, any>[]; edges: Record<string, any>[] }) {
+  async setData(options: { nodes: Record<string, any>[]; edges: Record<string, any>[] }) {
     // 上一份数据的视图还挂在 world 里,先整体移除再重建
     this.world.removeChild(...this.nodes.values());
     this.nodes.clear();
@@ -48,21 +48,17 @@ export class ForceGraph extends Application {
         const local = this.world.toLocal(event.global);
         const dragOffsetX = (data.x || 0) - (local?.x || 0);
         const dragOffsetY = (data.y || 0) - (local?.y || 0);
-        data.fx = data.x;
-        data.fy = data.y;
-        this.layout.simulation.alphaTarget(0.1).restart();
 
         const onDragMove = (event: FederatedPointerEvent) => {
           const local = this.world.toLocal(event.global);
           if (!local) return;
-          data.fx = local.x + dragOffsetX;
-          data.fy = local.y + dragOffsetY;
+          data.x = local.x + dragOffsetX;
+          data.y = local.y + dragOffsetY;
+          node.position.set(data.x, data.y);
+          this.edgesLayer.drawEdges();
         };
 
         const endDrag = () => {
-          data.fx = null;
-          data.fy = null;
-          this.layout.simulation.alphaTarget(0);
           stage.off("pointermove", onDragMove);
           stage.off("pointerup", endDrag);
           canvas.removeEventListener("pointerleave", endDrag);
@@ -75,7 +71,20 @@ export class ForceGraph extends Application {
     }
 
     this.edgesLayer.setEdges(options.edges);
-    this.layout.setData(options);
+    const layoutDone = this.layout.execute(options);
+    // 播种坐标先可见;布局无动画后台计算,收敛后一次性刷新
+    this.syncViews();
+    await layoutDone;
+    this.syncViews();
+  }
+
+  /** 数据坐标刷到视图:播种后、布局收敛后、拖动时各调一次 */
+  private syncViews() {
+    for (const node of this.nodes.values()) {
+      const { x, y } = node.data;
+      node.position.set(x, y);
+    }
+    this.edgesLayer.drawEdges();
   }
 
   destroy() {
@@ -117,13 +126,5 @@ export class ForceGraph extends Application {
       this.zoomBehavior.transform,
       zoomIdentity.translate(screen.width / 2, screen.height / 2),
     );
-
-    this.layout.simulation.on("tick", () => {
-      for (const node of this.nodes.values()) {
-        const { x, y } = node.data;
-        node.position.set(x, y);
-      }
-      this.edgesLayer.drawEdges();
-    });
   }
 }
