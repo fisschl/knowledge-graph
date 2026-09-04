@@ -17,6 +17,8 @@ export class ForceGraph extends Application {
   /** 当前标签显隐状态,避免每个缩放帧都遍历节点 */
   labelVisible = true;
 
+  scale = ref(1);
+
   constructor() {
     super();
     this.world.addChild(this.edgesLayer);
@@ -26,8 +28,10 @@ export class ForceGraph extends Application {
 
   async setData(options: { nodes: Record<string, any>[]; edges: Record<string, any>[] }) {
     // 上一份数据的视图还挂在 world 里,先整体移除再重建
-    this.world.removeChild(...this.nodes.values());
+    const oldNodes = Array.from(this.nodes.values());
+    this.world.removeChild(...oldNodes);
     this.nodes.clear();
+    oldNodes.forEach((node) => node.destroy());
 
     // 初始播种:随机散布在大圆周上,半径随节点数线性增长(2πR = n·SEED_ARC),不钳制屏幕
     // 将点随机放到以原点为圆心、radius 为半径的圆周上(角度直接随机取,不追求均匀分布)
@@ -38,8 +42,10 @@ export class ForceGraph extends Application {
       data.y = radius * Math.sin(angle);
     }
 
+    const disableLabel = computed(() => this.scale.value < LABEL_MIN_SCALE);
+
     for (const data of options.nodes) {
-      const node = new GraphNode({ data });
+      const node = new GraphNode({ data, disableLabel });
       this.nodes.set(data.id, node);
       this.world.addChild(node);
       const { stage, canvas } = this;
@@ -69,30 +75,19 @@ export class ForceGraph extends Application {
         stage.on("pointerup", endDrag);
         canvas.addEventListener("pointerleave", endDrag);
       });
-      const { x, y } = node.data;
+      const { x, y } = data;
       node.position.set(x, y);
     }
 
     await this.layout.execute(options);
     // setEdges 须在布局解析 source/target 为节点对象之后调用:邻接表直接读 item.id
     this.edgesLayer.setEdges(options.edges);
-    for (const node of this.nodes.values()) {
-      const { x, y } = node.data;
-      node.position.set(x, y);
+    for (const data of options.nodes) {
+      const { x, y } = data;
+      const node = this.nodes.get(data.id);
+      if (node) node.position.set(x, y);
     }
     this.edgesLayer.drawEdges();
-    // 重建节点后同步当前缩放下标签显隐(如 setData 恰逢缩小状态)
-    for (const node of this.nodes.values()) node.setLabelVisible(this.labelVisible);
-  }
-
-  /**
-   * 按当前缩放 k 同步标签显隐:低于 LABEL_MIN_SCALE 时隐藏,仅在跨越阈值时才遍历节点
-   */
-  updateLabelVisibility(scale: number) {
-    const visible = scale >= LABEL_MIN_SCALE;
-    if (visible === this.labelVisible) return;
-    this.labelVisible = visible;
-    for (const node of this.nodes.values()) node.setLabelVisible(visible);
   }
 
   destroy() {
@@ -126,7 +121,7 @@ export class ForceGraph extends Application {
         const { x, y, k } = event.transform;
         position.set(x, y);
         scale.set(k);
-        this.updateLabelVisibility(k);
+        this.scale.value = k;
       });
 
     select(this.canvas).call(this.zoomBehavior);

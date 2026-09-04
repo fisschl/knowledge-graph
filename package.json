@@ -19,7 +19,6 @@
     "@tanstack/vue-virtual": "^3.13.36",
     "@vitejs/plugin-legacy": "^8.2.3",
     "@vitejs/plugin-vue": "^6.0.8",
-    "@vue/reactivity": "^3.5.42",
     "@vueuse/core": "^14.4.0",
     "async-validator": "^4.2.5",
     "bignumber.js": "^11.1.5",
