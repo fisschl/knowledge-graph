@@ -68,8 +68,9 @@ export class ForceGraph extends Application {
       node.position.set(x, y);
     }
 
-    this.edgesLayer.setEdges(options.edges);
     await this.layout.execute(options);
+    // setEdges 须在布局解析 source/target 为节点对象之后调用:邻接表直接读 item.id
+    this.edgesLayer.setEdges(options.edges);
     for (const node of this.nodes.values()) {
       const { x, y } = node.data;
       node.position.set(x, y);

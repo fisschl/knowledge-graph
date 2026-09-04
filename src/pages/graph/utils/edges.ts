@@ -98,8 +98,8 @@ export class EdgesLayer extends Container {
   }
 
   /**
-   * 写入边数据并同步给 linkForce。
-   * 调用前 simulation 必须已 nodes():links setter 会立即按当前节点数组解析 source/target 引用
+   * 写入边数据并建桶、邻接表。
+   * 须在 forceLink 把 source/target 解析为节点对象之后调用:邻接表和 writeEdge 都直接读节点引用
    */
   setEdges(edges: Record<string, any>[]) {
     // geometry 持有 GPU 缓冲,Mesh.destroy 不代管,需显式销毁
