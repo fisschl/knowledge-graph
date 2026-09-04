@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BitmapFont, extensions, CullerPlugin } from "pixi.js";
+import { BitmapFont, extensions, CullerPlugin, TextStyle } from "pixi.js";
 import { ForceGraph } from "./utils/world";
 
 extensions.add(CullerPlugin);
@@ -24,7 +24,11 @@ const initWorld = async () => {
   await document.fonts.load('16px "Noto Sans SC"', chars);
   BitmapFont.install({
     name: "Noto Sans SC",
-    style: { fontFamily: "Noto Sans SC" },
+    style: new TextStyle({
+      fontFamily: "Noto Sans SC",
+      fontSize: 20,
+      fill: "#303133",
+    }),
     chars,
     resolution: devicePixelRatio,
   });
