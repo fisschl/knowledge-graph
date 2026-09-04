@@ -15,11 +15,12 @@ const EDGE_END_OFFSET = defaultNodeStyle.radius + defaultNodeStyle.strokeWidth /
 /** 线半宽,等价原 Graphics stroke({ color }) 的默认 width 1 */
 const EDGE_HALF_WIDTH = 0.5;
 
-/** 每边顶点数:线段 quad 4 + 箭头三角 3;索引 9 个(quad 两个三角形 + 箭头一个) */
+/** 每边顶点数:线段矩形 4 + 箭头三角 3;索引 9 个(矩形两个三角形 + 箭头一个) */
 const VERTS_PER_EDGE = 7;
 
 /**
- * 把一条边写进 positions 中它自己的顶点槽(base 由 typeIndex 推导):线段 quad + 箭头三角。
+ * 把一条边写进 positions 中它自己的顶点槽(base 由 typeIndex 推导):线段矩形 + 箭头三角。
+ * 矩形只延伸到箭头底边,与三角形在底边处拼成同一个 7 顶点多边形,避免矩形钻到三角下重叠。
  * 过短/自环边写全零退化顶点,零面积三角形在光栅化阶段被丢弃,等价于不画
  */
 const writeEdge = (edge: Record<string, any>, positions: Float32Array) => {
@@ -41,16 +42,17 @@ const writeEdge = (edge: Record<string, any>, positions: Float32Array) => {
   const uy = dy / len;
   const tipX = tx - ux * EDGE_END_OFFSET;
   const tipY = ty - uy * EDGE_END_OFFSET;
-  // 线段 quad:沿边方向,垂直展开半宽 EDGE_HALF_WIDTH
+  // 箭头底边:线段矩形只延伸到这里,与三角形共用这条底边拼成一个多边形
+  const baseX = tipX - ux * ARROW_LENGTH;
+  const baseY = tipY - uy * ARROW_LENGTH;
+  // 线段矩形:从源点延伸到箭头底边,沿边方向垂直展开半宽 EDGE_HALF_WIDTH
   const nx = -uy * EDGE_HALF_WIDTH;
   const ny = ux * EDGE_HALF_WIDTH;
   positions.set(
-    [sx + nx, sy + ny, sx - nx, sy - ny, tipX + nx, tipY + ny, tipX - nx, tipY - ny],
+    [sx + nx, sy + ny, sx - nx, sy - ny, baseX + nx, baseY + ny, baseX - nx, baseY - ny],
     base,
   );
-  // 箭头三角形:尖贴 target 圆边,两底角沿边的垂直方向展开
-  const baseX = tipX - ux * ARROW_LENGTH;
-  const baseY = tipY - uy * ARROW_LENGTH;
+  // 箭头三角形:尖贴 target 圆边,两底角沿边的垂直方向展开,与矩形底边相接
   const px = -uy * ARROW_HALF_WIDTH;
   const py = ux * ARROW_HALF_WIDTH;
   positions.set([tipX, tipY, baseX + px, baseY + py, baseX - px, baseY - py], base + 8);
