@@ -10,8 +10,6 @@ const destroy = () => {
   if (canvas) hostElement.value?.removeChild(canvas);
 };
 
-const isLoading = ref(false);
-
 const initWorld = async () => {
   const response = await fetch("https://bronya.world/datasets/medical_graph_3k.json");
   const data = await response.json();
@@ -34,18 +32,13 @@ const initWorld = async () => {
 };
 
 onMounted(async () => {
-  isLoading.value = true;
-  try {
-    await initWorld();
-  } finally {
-    isLoading.value = false;
-  }
+  await initWorld();
 });
 onBeforeUnmount(() => destroy());
 </script>
 
 <template>
-  <div ref="graph-host" v-loading="isLoading" :class="$style.host" />
+  <div ref="graph-host" :class="$style.host" />
 </template>
 
 <style module>

@@ -3,11 +3,11 @@ import { zoom, zoomIdentity, type ZoomBehavior } from "d3-zoom";
 import { Application, Container, FederatedPointerEvent, type ApplicationOptions } from "pixi.js";
 import { EdgesLayer } from "./edges";
 import { ForceLayout } from "./layout";
-import { Node } from "./nodes";
+import { GraphNode,  } from "./nodes";
 
 export class ForceGraph extends Application {
   edgesLayer = new EdgesLayer();
-  nodes = new Map<string, Node>();
+  nodes = new Map<string, GraphNode>();
   world = new Container();
   zoomBehavior?: ZoomBehavior<HTMLCanvasElement, unknown>;
   layout = new ForceLayout();
@@ -34,7 +34,7 @@ export class ForceGraph extends Application {
     }
 
     for (const data of options.nodes) {
-      const node = new Node({ data });
+      const node = new GraphNode({ data });
       this.nodes.set(data.id, node);
       this.world.addChild(node);
       const { stage, canvas } = this;
