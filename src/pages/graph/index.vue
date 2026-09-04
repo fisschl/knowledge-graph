@@ -23,7 +23,7 @@ const initWorld = async () => {
   world.value = instance;
   await instance.init({
     background: "#ffffff",
-    antialias: true,
+    antialias: false,
     resolution: devicePixelRatio,
     autoDensity: true,
     resizeTo: hostElement.value,
