@@ -5,12 +5,17 @@ import { EdgesLayer } from "./edges";
 import { ForceLayout } from "./layout";
 import { GraphNode } from "./nodes";
 
+/** 缩放低于该阈值时隐藏节点标签,避免缩小后文字过小不可读 */
+const LABEL_MIN_SCALE = 0.5;
+
 export class ForceGraph extends Application {
   edgesLayer = new EdgesLayer();
   nodes = new Map<string, GraphNode>();
   world = new Container();
   zoomBehavior?: ZoomBehavior<HTMLCanvasElement, unknown>;
   layout = new ForceLayout();
+  /** 当前标签显隐状态,避免每个缩放帧都遍历节点 */
+  labelVisible = true;
 
   constructor() {
     super();
@@ -76,6 +81,18 @@ export class ForceGraph extends Application {
       node.position.set(x, y);
     }
     this.edgesLayer.drawEdges();
+    // 重建节点后同步当前缩放下标签显隐(如 setData 恰逢缩小状态)
+    for (const node of this.nodes.values()) node.setLabelVisible(this.labelVisible);
+  }
+
+  /**
+   * 按当前缩放 k 同步标签显隐:低于 LABEL_MIN_SCALE 时隐藏,仅在跨越阈值时才遍历节点
+   */
+  updateLabelVisibility(scale: number) {
+    const visible = scale >= LABEL_MIN_SCALE;
+    if (visible === this.labelVisible) return;
+    this.labelVisible = visible;
+    for (const node of this.nodes.values()) node.setLabelVisible(visible);
   }
 
   destroy() {
@@ -109,6 +126,7 @@ export class ForceGraph extends Application {
         const { x, y, k } = event.transform;
         position.set(x, y);
         scale.set(k);
+        this.updateLabelVisibility(k);
       });
 
     select(this.canvas).call(this.zoomBehavior);
