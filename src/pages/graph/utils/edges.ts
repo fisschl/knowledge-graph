@@ -104,15 +104,6 @@ export class EdgesLayer extends Container {
    * 调用前 simulation 必须已 nodes():links setter 会立即按当前节点数组解析 source/target 引用
    */
   setEdges(edges: Record<string, any>[]) {
-    const types = new Set<string>();
-    for (const edge of edges) if (edge.type) types.add(edge.type);
-    const colors = schemeObservable10.map((hex) => Number.parseInt(hex.slice(1), 16));
-    Array.from(types)
-      .sort()
-      .forEach((type, index) => {
-        this.color.set(type, colors[index % colors.length]);
-      });
-
     // geometry 持有 GPU 缓冲,Mesh.destroy 不代管,需显式销毁
     for (const mesh of this.mesh.values()) {
       mesh.geometry.destroy();
@@ -124,6 +115,15 @@ export class EdgesLayer extends Container {
     this.mesh.clear();
     this.positions.clear();
     this.adjacency.clear();
+
+    const types = new Set<string>();
+    for (const edge of edges) if (edge.type) types.add(edge.type);
+    const colors = schemeObservable10.map((hex) => Number.parseInt(hex.slice(1), 16));
+    Array.from(types)
+      .sort()
+      .forEach((type, index) => {
+        this.color.set(type, colors[index % colors.length]);
+      });
 
     // 将边按类型分组存入 this.types
     for (const edge of edges) {
