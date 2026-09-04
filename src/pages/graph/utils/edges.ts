@@ -19,10 +19,11 @@ const EDGE_HALF_WIDTH = 0.5;
 const VERTS_PER_EDGE = 7;
 
 /**
- * 把一条边写进 positions 的 base 偏移处:线段 quad + 箭头三角。
+ * 把一条边写进 positions 中它自己的顶点槽(base 由 typeIndex 推导):线段 quad + 箭头三角。
  * 过短/自环边写全零退化顶点,零面积三角形在光栅化阶段被丢弃,等价于不画
  */
-const writeEdge = (edge: Record<string, any>, positions: Float32Array, base: number) => {
+const writeEdge = (edge: Record<string, any>, positions: Float32Array) => {
+  const base = edge.typeIndex * VERTS_PER_EDGE * 2;
   // edge.source/target 已被 forceLink 替换为节点数据对象引用,直接读坐标
   const sx = edge.source.x || 0;
   const sy = edge.source.y || 0;
@@ -74,7 +75,7 @@ export class EdgesLayer extends Container {
   positions = new Map<string, Float32Array>();
 
   /**
-   * 邻接表,键为节点 id,值为该节点的邻接边数组
+   * 邻接表,键为节点 id,值为该节点的邻接边数组,边携带 typeIndex(type 分组内下标)
    */
   adjacency = new Map<string, Record<string, any>[]>();
 
@@ -117,6 +118,11 @@ export class EdgesLayer extends Container {
       mesh.geometry.destroy();
       mesh.destroy();
     }
+    // 换数据时全部重建:残留旧 type 的分组会让新边追加到旧数组后面,画出指向旧节点坐标的幽灵边
+    this.types.clear();
+    this.color.clear();
+    this.mesh.clear();
+    this.positions.clear();
     this.adjacency.clear();
 
     // 将边按类型分组存入 this.types
@@ -128,9 +134,8 @@ export class EdgesLayer extends Container {
 
     for (const list of this.types.values()) {
       list.forEach((edge, index) => {
-        // 原地记录边在数组中的索引
-        edge.index = index;
-        // 将边加入邻接表
+        // 字段名必须避开 index:d3-force 的 link.initialize 会覆写 link.index 为全局下标
+        edge.typeIndex = index;
         this.setAdjacency(edge);
       });
     }
@@ -157,7 +162,7 @@ export class EdgesLayer extends Container {
       const mesh = this.mesh.get(type);
       const positions = this.positions.get(type);
       if (!mesh || !positions) continue;
-      edges.forEach((edge, i) => writeEdge(edge, positions, i * VERTS_PER_EDGE * 2));
+      edges.forEach((edge) => writeEdge(edge, positions));
       mesh.geometry.getBuffer("aPosition").update();
     }
   }
@@ -166,14 +171,12 @@ export class EdgesLayer extends Container {
   drawEdgesOf(id: string) {
     const edges = this.adjacency.get(id);
     if (!edges) return;
-    console.log(edges);
     const touched = new Set<Mesh>();
     for (const edge of edges) {
       const positions = this.positions.get(edge.type);
       const mesh = this.mesh.get(edge.type);
       if (!positions || !mesh) continue;
-      const { index } = edge;
-      writeEdge(edge, positions, index * VERTS_PER_EDGE * 2);
+      writeEdge(edge, positions);
       touched.add(mesh);
     }
     for (const mesh of touched) mesh.geometry.getBuffer("aPosition").update();
