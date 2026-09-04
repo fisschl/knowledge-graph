@@ -1,0 +1,5 @@
+allowBuilds:
+  "@logicflow/core": false
+  core-js: false
+  esbuild: false
+  vue-demi: false

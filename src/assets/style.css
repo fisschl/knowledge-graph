@@ -1,0 +1,24 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html:root {
+  --el-font-family: "Noto Sans SC", system-ui;
+  --el-color-primary: #3b82f6;
+  font-family: var(--el-font-family), system-ui;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  line-height: 1.5;
+  font-size: 16px !important;
+}
+
+body {
+  background-color: white;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font: inherit;
+}
