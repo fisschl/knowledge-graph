@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { BitmapFont } from "pixi.js";
-import { ForceGraph } from "./utils/world";
+import { Application } from "pixi.js";
+import { forceLayout, initialSowing } from "./utils/layout";
+import { ForceGraphWorld } from "./utils/world";
 
 const hostElement = useTemplateRef<HTMLDivElement>("graph-host");
-const world = shallowRef<ForceGraph | null>(null);
+const app = shallowRef<Application | null>(null);
+const world = shallowRef<ForceGraphWorld | null>(null);
 
 const destroy = () => {
-  world.value?.destroy();
+  world.value?.destroy({ children: true });
+  app.value?.destroy();
   const canvas = hostElement.value?.querySelector("canvas");
   if (canvas) hostElement.value?.removeChild(canvas);
 };
@@ -34,8 +38,8 @@ const initWorld = async () => {
   });
   destroy();
 
-  const instance = new ForceGraph();
-  world.value = instance;
+  const instance = markRaw(new Application());
+  app.value = instance;
   await instance.init({
     background: "#ffffff",
     antialias: false,
@@ -46,7 +50,25 @@ const initWorld = async () => {
     preference: "webgpu",
   });
   hostElement.value.appendChild(instance.canvas);
-  await instance.setData(data);
+  instance.stage.eventMode = "static";
+  instance.stage.label = "root";
+  instance.stage.hitArea = instance.renderer.screen;
+
+  initialSowing(data.nodes);
+  await forceLayout({
+    nodes: data.nodes,
+    edges: data.edges,
+  });
+
+  const graphWorld = new ForceGraphWorld(
+    reactive({
+      nodes: data.nodes,
+      edges: data.edges,
+      application: instance,
+    }),
+  );
+  world.value = graphWorld;
+  instance.stage.addChild(graphWorld);
 };
 
 onMounted(async () => {

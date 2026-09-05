@@ -1,128 +1,104 @@
 import { select } from "d3-selection";
-import { zoom, zoomIdentity, type ZoomBehavior } from "d3-zoom";
-import { Application, Container, FederatedPointerEvent, type ApplicationOptions } from "pixi.js";
+import { zoom, zoomIdentity } from "d3-zoom";
+import { Application, Container } from "pixi.js";
+import { effect } from "vue";
 import { EdgesLayer } from "./edges";
 import { GraphNode } from "./nodes";
-import { forceLayout } from "./layout";
 
 /** 缩放低于该阈值时隐藏节点标签,避免缩小后文字过小不可读 */
 const LABEL_MIN_SCALE = 0.5;
 
-export class ForceGraph extends Application {
-  edgesLayer = new EdgesLayer();
-  nodes = new Map<string, GraphNode>();
-  world = new Container();
-  zoom?: ZoomBehavior<HTMLCanvasElement, unknown>;
-  /** 当前标签显隐状态,避免每个缩放帧都遍历节点 */
-  labelVisible = true;
+export interface ForceGraphWorldOptions {
+  nodes: Record<string, any>[];
+  edges: Record<string, any>[];
+  application: Application;
+}
 
-  scale = ref(1);
-
-  constructor() {
+export class ForceGraphWorld extends Container {
+  constructor(options: ForceGraphWorldOptions) {
     super();
-    this.world.addChild(this.edgesLayer);
-    this.stage.addChild(this.world);
-    this.stage.eventMode = "static";
-  }
-
-  async setData(options: { nodes: Record<string, any>[]; edges: Record<string, any>[] }) {
-    // 上一份数据的视图还挂在 world 里,先整体移除再重建
-    const oldNodes = Array.from(this.nodes.values());
-    this.world.removeChild(...oldNodes);
-    this.nodes.clear();
-    oldNodes.forEach((node) => node.destroy());
-
-    // 初始播种:随机散布在大圆周上,半径随节点数线性增长(2πR = n·SEED_ARC),不钳制屏幕
-    // 将点随机放到以原点为圆心、radius 为半径的圆周上(角度直接随机取,不追求均匀分布)
-    const radius = (options.nodes.length * 100) / (Math.PI * 2);
-    for (const data of options.nodes) {
-      const angle = Math.random() * Math.PI * 2;
-      data.x = radius * Math.cos(angle);
-      data.y = radius * Math.sin(angle);
-    }
-
-    const disableLabel = computed(() => this.scale.value < LABEL_MIN_SCALE);
-
-    for (const data of options.nodes) {
-      const node = new GraphNode({ data, disableLabel });
-      this.nodes.set(data.id, node);
-      this.world.addChild(node);
-      const { stage, canvas } = this;
-
-      node.on("pointerdown", (event) => {
-        // 记录抓取点相对圆心的偏移,按住标签拖动时节点不跳变
-        const local = this.world.toLocal(event.global);
-        const dragOffsetX = (data.x || 0) - (local?.x || 0);
-        const dragOffsetY = (data.y || 0) - (local?.y || 0);
-
-        const onDragMove = (event: FederatedPointerEvent) => {
-          const local = this.world.toLocal(event.global);
-          if (!local) return;
-          data.x = local.x + dragOffsetX;
-          data.y = local.y + dragOffsetY;
-          node.position.set(data.x, data.y);
-          this.edgesLayer.drawEdgesOf(data.id);
-        };
-
-        const endDrag = () => {
-          stage.off("pointermove", onDragMove);
-          stage.off("pointerup", endDrag);
-          canvas.removeEventListener("pointerleave", endDrag);
-        };
-
-        stage.on("pointermove", onDragMove);
-        stage.on("pointerup", endDrag);
-        canvas.addEventListener("pointerleave", endDrag);
-      });
-      const { x, y } = data;
-      node.position.set(x, y);
-    }
-
-    await forceLayout(options);
-    // setEdges 须在布局解析 source/target 为节点对象之后调用:邻接表直接读 item.id
-    this.edgesLayer.setEdges(options.edges);
-    for (const data of options.nodes) {
-      const { x, y } = data;
-      const node = this.nodes.get(data.id);
-      if (node) node.position.set(x, y);
-    }
-    this.edgesLayer.drawEdges();
-  }
-
-  async init(options: Partial<ApplicationOptions>) {
-    await super.init(options);
-
-    // hitArea 依赖 renderer,init 之后才存在
-    this.stage.hitArea = this.renderer.screen;
-
-    const { screen } = this;
-    const { position, scale } = this.world;
-
-    this.zoom = zoom<HTMLCanvasElement, unknown>()
+    this.label = "world";
+    const transform = reactive({ x: 0, y: 0, k: 1 });
+    const translator = zoom<HTMLCanvasElement, unknown>()
       .filter((event) => {
         // 滚轮/双击等非起拖事件走 d3 默认过滤,缩放行为不变
         if (!["mousedown", "touchstart", "pointerdown"].includes(event.type))
           return (!event.ctrlKey || event.type === "wheel") && !event.button;
         if (event.button) return false;
-        const { canvas, stage } = this;
+        const { canvas, stage } = options.application;
         const { left, top } = canvas.getBoundingClientRect();
         const x = event.clientX - left;
         const y = event.clientY - top;
-        const { rootBoundary } = this.renderer.events;
+        const { rootBoundary } = options.application.renderer.events;
         return rootBoundary.hitTest(x, y) === stage;
       })
       .on("zoom", (event) => {
         const { x, y, k } = event.transform;
-        position.set(x, y);
-        scale.set(k);
-        this.scale.value = k;
+        transform.x = x;
+        transform.y = y;
+        transform.k = k;
       });
-
-    select(this.canvas).call(this.zoom);
-    // 初始 transform 把模拟原点对齐画布中心,默认螺旋播种围绕中心展开
-    select(this.canvas).call(
-      this.zoom.transform,
+    const { canvas, screen } = options.application;
+    select(canvas).call(translator);
+    select(canvas).call(
+      translator.transform,
       zoomIdentity.translate(screen.width / 2, screen.height / 2),
     );
+
+    const nodes = new Map<string, GraphNode>();
+    const edgesLayer = new EdgesLayer(
+      reactive({
+        edges: options.edges,
+      }),
+    );
+    this.addChild(edgesLayer);
+
+    const scope = effectScope();
+    scope.run(() => {
+      effect(() => {
+        const { x, y, k } = transform;
+        this.position.set(x, y);
+        this.scale.set(k);
+      });
+
+      const dataCache = computed(() => {
+        const dataCache = new Map<string, Record<string, any>>();
+        options.nodes.forEach((node) => dataCache.set(node.id, node));
+        return dataCache;
+      });
+
+      const disableLabel = computed(() => transform.k < LABEL_MIN_SCALE);
+
+      effect(() => {
+        Array.from(nodes.keys())
+          .filter((key) => !dataCache.value.has(key))
+          .forEach((key) => {
+            const instance = nodes.get(key)!;
+            this.removeChild(instance);
+            instance.destroy({ children: true });
+            nodes.delete(key);
+          });
+        for (const [id, data] of dataCache.value.entries()) {
+          const instance = nodes.get(id);
+          if (instance) {
+            const { options } = instance;
+            options.data = data;
+          } else {
+            const options = reactive({
+              data,
+              disableLabel,
+            });
+            const instance = new GraphNode(options);
+            nodes.set(id, instance);
+            this.addChild(instance);
+          }
+        }
+      });
+      effect(() => {
+        edgesLayer.options.edges = options.edges;
+      });
+    });
+
+    this.on("destroyed", () => scope.stop());
   }
 }

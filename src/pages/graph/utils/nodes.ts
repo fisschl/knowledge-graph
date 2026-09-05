@@ -1,4 +1,4 @@
-import { BitmapText, Container, Graphics, TextStyle } from "pixi.js";
+import { BitmapText, Container, FederatedPointerEvent, Graphics, TextStyle } from "pixi.js";
 import { effect, effectScope } from "vue";
 
 const defaultLabelStyle = new TextStyle({
@@ -14,11 +14,13 @@ export const defaultNodeStyle = {
   strokeWidth: 2,
 };
 
+export interface GraphNodeOptions {
+  data: Record<string, any>;
+  disableLabel?: boolean;
+}
+
 export class GraphNode extends Container {
-  constructor(options: {
-    data: MaybeRefOrGetter<Record<string, any>>;
-    disableLabel?: MaybeRefOrGetter<boolean>;
-  }) {
+  constructor(public readonly options: GraphNodeOptions) {
     super();
     const circle = new Graphics()
       .circle(0, 0, defaultNodeStyle.radius)
@@ -38,13 +40,13 @@ export class GraphNode extends Container {
     const scope = effectScope();
     scope.run(() => {
       effect(() => {
-        const { label } = toValue(options.data);
-        const isVisible = label && !toValue(options.disableLabel);
+        const { label } = options.data;
+        const isVisible = label && !options.disableLabel;
         text.visible = isVisible;
         textBackground.visible = isVisible;
       });
       effect(() => {
-        const { label } = toValue(options.data);
+        const { label } = options.data;
         text.text = label;
         text.style = defaultLabelStyle;
         textBackground
@@ -52,7 +54,44 @@ export class GraphNode extends Container {
           .rect(-text.anchor.x * text.width, -text.height / 2, text.width, text.height)
           .fill({ color: 0xffffff, alpha: 0.7 });
       });
+      effect(() => {
+        const { x, y } = options.data;
+        this.position.set(x || 0, y || 0);
+      });
+    });
+    this.on("pointerdown", (event) => {
+      const world = findAncestor(this, "world");
+      if (!world) return;
+      const local = world.toLocal(event.global);
+      const { data } = options;
+      const dragOffsetX = (data.x || 0) - (local?.x || 0);
+      const dragOffsetY = (data.y || 0) - (local?.y || 0);
+
+      const onDragMove = (event: FederatedPointerEvent) => {
+        const local = world.toLocal(event.global);
+        if (!local) return;
+        data.x = local.x + dragOffsetX;
+        data.y = local.y + dragOffsetY;
+      };
+
+      const stage = findAncestor(world, "root");
+      if (!stage) return;
+      const endDrag = () => {
+        stage.off("pointermove", onDragMove);
+        stage.off("pointerup", endDrag);
+        stage.off("pointerleave", endDrag);
+      };
+
+      stage.on("pointermove", onDragMove);
+      stage.on("pointerup", endDrag);
+      stage.on("pointerleave", endDrag);
     });
     this.on("destroyed", () => scope.stop());
   }
+}
+
+export function findAncestor(ele: Container, label: string): Container | undefined {
+  if (ele.label === label) return ele;
+  if (!ele.parent) return undefined;
+  return findAncestor(ele.parent, label);
 }
