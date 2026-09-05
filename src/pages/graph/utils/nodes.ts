@@ -1,5 +1,5 @@
 import { BitmapText, Container, FederatedPointerEvent, Graphics, TextStyle } from "pixi.js";
-import { effect, effectScope } from "vue";
+import { effect, effectScope, watchEffect } from "vue";
 
 const defaultLabelStyle = new TextStyle({
   fontFamily: "Noto Sans SC",
@@ -54,7 +54,8 @@ export class GraphNode extends Container {
           .rect(-text.anchor.x * text.width, -text.height / 2, text.width, text.height)
           .fill({ color: 0xffffff, alpha: 0.7 });
       });
-      effect(() => {
+      // watchEffect:拖动时 data.x=data.y 两次写入合并为一次微任务 flush,避免每次移动跑 2 次
+      watchEffect(() => {
         const { x, y } = options.data;
         this.position.set(x || 0, y || 0);
       });

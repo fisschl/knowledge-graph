@@ -1,7 +1,7 @@
 import { schemeObservable10 } from "d3-scale-chromatic";
 import { Container, Mesh, MeshGeometry } from "pixi.js";
 import type { EffectScope } from "vue";
-import { effect, effectScope } from "vue";
+import { effect, effectScope, watchEffect } from "vue";
 import { defaultNodeStyle } from "./nodes";
 
 /** 缺失 type 的边共用的默认颜色 */
@@ -90,7 +90,8 @@ export class GraphEdge {
   constructor(public readonly options: GraphEdgeOptions) {
     this.scope = effectScope();
     this.scope.run(() => {
-      effect(() => {
+      // watchEffect:拖动时源/目标点 x=y 两次写入合并为一次 flush,每条相邻边每次移动只算 1 次
+      watchEffect(() => {
         const base = options.index * VERTS_PER_EDGE * 2;
         const { edge, positions } = options;
         // edge.source/target 已被 forceLink 替换为节点数据对象引用,直接读坐标
