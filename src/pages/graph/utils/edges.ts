@@ -202,17 +202,20 @@ export class EdgesTypeMesh extends Mesh {
       const { geometry } = this;
       geometry.destroy();
       graphEdges.forEach((item) => item.destroy());
-      if (this.fraId !== undefined) cancelAnimationFrame(this.fraId);
     });
   }
 
-  fraId?: number;
+  /** 同一 flush/帧内至多排一次 rAF:首个边触发后其余边直接短路,免去每边一次 cancel+rAF 的调用抖动 */
+  fraPending = false;
   updateGeometry() {
-    if (this.fraId !== undefined) cancelAnimationFrame(this.fraId);
-    this.fraId = requestAnimationFrame(() => {
+    if (this.fraPending) return;
+    this.fraPending = true;
+    requestAnimationFrame(() => {
+      this.fraPending = false;
+      // destroy 后(或 destroy 进行中)排到的回调不再触碰已销毁的 geometry
+      if (this.destroyed) return;
       const { geometry } = this;
       geometry.getBuffer("aPosition").update();
-      this.fraId = undefined;
     });
   }
 }
