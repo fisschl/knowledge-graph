@@ -26,7 +26,6 @@
     "d3-force": "^3.0.0",
     "d3-scale-chromatic": "^3.1.0",
     "d3-selection": "^3.0.0",
-    "d3-zoom": "^3.0.0",
     "dayjs": "^1.11.23",
     "echarts": "^6.1.0",
     "element-plus": "^2.14.5",

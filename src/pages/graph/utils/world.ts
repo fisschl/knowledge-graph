@@ -1,6 +1,4 @@
-import { select } from "d3-selection";
-import { zoom, zoomIdentity } from "d3-zoom";
-import { Application, Container } from "pixi.js";
+import { Application, Container, Matrix } from "pixi.js";
 import { effect } from "vue";
 import { EdgesLayer } from "./edges";
 import { GraphNode } from "./nodes";
@@ -14,36 +12,58 @@ export interface ForceGraphWorldOptions {
   application: Application;
 }
 
+const deltaZoomWheel = (event: WheelEvent) => {
+  const { deltaY, deltaMode, ctrlKey } = event;
+  const modeValue = deltaMode === 1 ? 0.05 : deltaMode ? 1 : 0.002;
+  return deltaY * modeValue * (ctrlKey ? 10 : 1);
+};
+
 export class ForceGraphWorld extends Container {
   constructor(options: ForceGraphWorldOptions) {
     super();
     this.label = "world";
-    const transform = reactive({ x: 0, y: 0, k: 1 });
-    const translator = zoom<HTMLCanvasElement, unknown>()
-      .filter((event) => {
-        // 滚轮/双击等非起拖事件走 d3 默认过滤,缩放行为不变
-        if (!["mousedown", "touchstart", "pointerdown"].includes(event.type))
-          return (!event.ctrlKey || event.type === "wheel") && !event.button;
-        if (event.button) return false;
-        const { canvas, stage } = options.application;
-        const { left, top } = canvas.getBoundingClientRect();
-        const x = event.clientX - left;
-        const y = event.clientY - top;
-        const { rootBoundary } = options.application.renderer.events;
-        return rootBoundary.hitTest(x, y) === stage;
-      })
-      .on("zoom", (event) => {
-        const { x, y, k } = event.transform;
-        transform.x = x;
-        transform.y = y;
-        transform.k = k;
-      });
     const { canvas, screen } = options.application;
-    select(canvas).call(translator);
-    select(canvas).call(
-      translator.transform,
-      zoomIdentity.translate(screen.width / 2, screen.height / 2),
-    );
+    // 初始变换:世界居中于画布中心
+    const transform = reactive({ x: screen.width / 2, y: screen.height / 2, k: 1 });
+
+    /**
+     * 滚轮缩放:以光标为锚。用 Pixi Matrix 的 applyInverse 求光标下的世界坐标,
+     * 缩放后把该点重新对齐到光标处(等价 M' = T(p)·S(k1/k)·T(-p)·M)
+     */
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const px = event.clientX - rect.left;
+      const py = event.clientY - rect.top;
+      const k1 = transform.k * Math.pow(2, -deltaZoomWheel(event));
+      const matrix = new Matrix(transform.k, 0, 0, transform.k, transform.x, transform.y);
+      // 光标下的世界坐标
+      const { x: wx, y: wy } = matrix.applyInverse({ x: px, y: py });
+      transform.k = k1;
+      transform.x = px - wx * k1;
+      transform.y = py - wy * k1;
+    };
+    canvas.addEventListener("wheel", onWheel, { passive: false });
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.button !== 0) return;
+      const startX = event.clientX;
+      const startY = event.clientY;
+
+      const onPointerMove = (event: PointerEvent) => {
+        transform.x = event.clientX - startX;
+        transform.y = event.clientY - startY;
+      };
+      addEventListener("pointermove", onPointerMove);
+      const onPointerUp = () => {
+        removeEventListener("pointermove", onPointerMove);
+        removeEventListener("pointerup", onPointerUp);
+        removeEventListener("pointercancel", onPointerUp);
+      };
+      addEventListener("pointerup", onPointerUp);
+      addEventListener("pointercancel", onPointerUp);
+    };
+    canvas.addEventListener("pointerdown", onPointerDown);
 
     const nodes = new Map<string, GraphNode>();
     const edgesLayer = new EdgesLayer(
@@ -99,6 +119,10 @@ export class ForceGraphWorld extends Container {
       });
     });
 
-    this.on("destroyed", () => scope.stop());
+    this.on("destroyed", () => {
+      canvas.removeEventListener("wheel", onWheel);
+      canvas.removeEventListener("pointerdown", onPointerDown);
+      scope.stop();
+    });
   }
 }

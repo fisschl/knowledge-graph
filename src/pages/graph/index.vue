@@ -50,9 +50,13 @@ const initWorld = async () => {
     preference: "webgpu",
   });
   hostElement.value.appendChild(instance.canvas);
-  instance.stage.eventMode = "static";
   instance.stage.label = "root";
-  instance.stage.hitArea = instance.renderer.screen;
+  // 关闭 Pixi 事件系统:交互全部走 DOM canvas 监听(world.ts),消除每 move 的全场景 hit-test 开销
+  const { features } = instance.renderer.events;
+  features.click = false;
+  features.move = false;
+  features.globalMove = false;
+  features.wheel = false;
 
   initialSowing(data.nodes);
   await forceLayout({
