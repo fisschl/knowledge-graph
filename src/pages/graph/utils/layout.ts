@@ -1,7 +1,7 @@
 import { forceCollide, forceManyBody, forceSimulation, forceX, forceY } from "d3-force";
 import { forceLink } from "d3-force";
 
-export const forceLayout = (options: {
+export const forceLayout = async (options: {
   nodes: Record<string, any>[];
   edges: Record<string, any>[];
 }) => {
@@ -17,15 +17,13 @@ export const forceLayout = (options: {
     .alphaDecay(0.03);
   simulation.nodes(options.nodes);
   linkForce.links(options.edges);
-  const nextTick = (resolve: () => void) => {
-    if (simulation.alpha() <= simulation.alphaMin()) return resolve();
-    for (let i = 0; i < 10; i++) simulation.tick();
-    // 布局在画布/世界创建前完成,期间无渲染可等:改用微任务分批替代 rAF 帧等待,
-    // 免去每帧 ~16.7ms 的帧周期(真机),并避免后台标签页 rAF 挂起导致布局永不结束
-    queueMicrotask(() => nextTick(resolve));
-  };
   simulation.stop();
-  return new Promise<void>((resolve) => nextTick(resolve));
+  // 布局在画布/世界创建前完成:每批 tick 后让出事件循环,浏览器可趁机渲染/响应输入,
+  // 8ms 比 rAF 帧周期(16.7ms)更短,且不依赖 rAF(后台标签页挂起不会卡死布局)
+  while (simulation.alpha() > simulation.alphaMin()) {
+    for (let i = 0; i < 10; i++) simulation.tick();
+    await new Promise((resolve) => setTimeout(resolve, 8));
+  }
 };
 
 /**
