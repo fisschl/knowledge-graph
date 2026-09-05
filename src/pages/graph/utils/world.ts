@@ -2,8 +2,8 @@ import { select } from "d3-selection";
 import { zoom, zoomIdentity, type ZoomBehavior } from "d3-zoom";
 import { Application, Container, FederatedPointerEvent, type ApplicationOptions } from "pixi.js";
 import { EdgesLayer } from "./edges";
-import { ForceLayout } from "./layout";
 import { GraphNode } from "./nodes";
+import { forceLayout } from "./layout";
 
 /** 缩放低于该阈值时隐藏节点标签,避免缩小后文字过小不可读 */
 const LABEL_MIN_SCALE = 0.5;
@@ -12,8 +12,7 @@ export class ForceGraph extends Application {
   edgesLayer = new EdgesLayer();
   nodes = new Map<string, GraphNode>();
   world = new Container();
-  zoomBehavior?: ZoomBehavior<HTMLCanvasElement, unknown>;
-  layout = new ForceLayout();
+  zoom?: ZoomBehavior<HTMLCanvasElement, unknown>;
   /** 当前标签显隐状态,避免每个缩放帧都遍历节点 */
   labelVisible = true;
 
@@ -79,7 +78,7 @@ export class ForceGraph extends Application {
       node.position.set(x, y);
     }
 
-    await this.layout.execute(options);
+    await forceLayout(options);
     // setEdges 须在布局解析 source/target 为节点对象之后调用:邻接表直接读 item.id
     this.edgesLayer.setEdges(options.edges);
     for (const data of options.nodes) {
@@ -88,11 +87,6 @@ export class ForceGraph extends Application {
       if (node) node.position.set(x, y);
     }
     this.edgesLayer.drawEdges();
-  }
-
-  destroy() {
-    this.layout.stop();
-    super.destroy();
   }
 
   async init(options: Partial<ApplicationOptions>) {
@@ -104,7 +98,7 @@ export class ForceGraph extends Application {
     const { screen } = this;
     const { position, scale } = this.world;
 
-    this.zoomBehavior = zoom<HTMLCanvasElement, unknown>()
+    this.zoom = zoom<HTMLCanvasElement, unknown>()
       .filter((event) => {
         // 滚轮/双击等非起拖事件走 d3 默认过滤,缩放行为不变
         if (!["mousedown", "touchstart", "pointerdown"].includes(event.type))
@@ -124,10 +118,10 @@ export class ForceGraph extends Application {
         this.scale.value = k;
       });
 
-    select(this.canvas).call(this.zoomBehavior);
+    select(this.canvas).call(this.zoom);
     // 初始 transform 把模拟原点对齐画布中心,默认螺旋播种围绕中心展开
     select(this.canvas).call(
-      this.zoomBehavior.transform,
+      this.zoom.transform,
       zoomIdentity.translate(screen.width / 2, screen.height / 2),
     );
   }
