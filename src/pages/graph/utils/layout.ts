@@ -18,9 +18,11 @@ export const forceLayout = (options: {
   simulation.nodes(options.nodes);
   linkForce.links(options.edges);
   const nextTick = (resolve: () => void) => {
-    if (!simulation || simulation.alpha() <= simulation.alphaMin()) return resolve();
+    if (simulation.alpha() <= simulation.alphaMin()) return resolve();
     for (let i = 0; i < 10; i++) simulation.tick();
-    requestAnimationFrame(() => nextTick(resolve));
+    // 布局在画布/世界创建前完成,期间无渲染可等:改用微任务分批替代 rAF 帧等待,
+    // 免去每帧 ~16.7ms 的帧周期(真机),并避免后台标签页 rAF 挂起导致布局永不结束
+    queueMicrotask(() => nextTick(resolve));
   };
   simulation.stop();
   return new Promise<void>((resolve) => nextTick(resolve));
