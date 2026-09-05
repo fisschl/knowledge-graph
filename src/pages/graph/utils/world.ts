@@ -49,10 +49,13 @@ export class ForceGraphWorld extends Container {
       if (event.button !== 0) return;
       const startX = event.clientX;
       const startY = event.clientY;
+      // 按下时的基准位移,平移在此之上累加
+      const startTransformX = transform.x;
+      const startTransformY = transform.y;
 
       const onPointerMove = (event: PointerEvent) => {
-        transform.x = event.clientX - startX;
-        transform.y = event.clientY - startY;
+        transform.x = startTransformX + (event.clientX - startX);
+        transform.y = startTransformY + (event.clientY - startY);
       };
       addEventListener("pointermove", onPointerMove);
       const onPointerUp = () => {
