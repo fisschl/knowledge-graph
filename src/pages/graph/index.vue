@@ -26,6 +26,9 @@ const initWorld = async () => {
   await document.fonts.load('24px "Noto Sans SC"', chars);
   // 烤白 + 超采样：字形以 24px 烘焙成白色图集，
   // 渲染时由各 TextStyle 的 fill 作为 tint 上色，同一图集可渲染任意颜色
+  // HMR 重新挂载会重复执行 install:先 uninstall 销毁旧字体(Cache.remove+释放纹理),
+  // 避免 "[Cache] already has key" 警告与每次热更泄漏一份字形图集
+  BitmapFont.uninstall("Noto Sans SC");
   BitmapFont.install({
     name: "Noto Sans SC",
     style: {
