@@ -19,12 +19,12 @@ const EDGE_HALF_WIDTH = 0.5;
 const VERTS_PER_EDGE = 7;
 
 /**
- * 把一条边写进 positions 中它自己的顶点槽(base 由 typeIndex 推导):线段矩形 + 箭头三角。
+ * 把一条边写进 positions 中它自己的顶点槽(base 由 "type:index" 推导):线段矩形 + 箭头三角。
  * 矩形只延伸到箭头底边,与三角形在底边处拼成同一个 7 顶点多边形,避免矩形钻到三角下重叠。
  * 过短/自环边写全零退化顶点,零面积三角形在光栅化阶段被丢弃,等价于不画
  */
 const writeEdge = (edge: Record<string, any>, positions: Float32Array) => {
-  const base = edge.typeIndex * VERTS_PER_EDGE * 2;
+  const base = edge["type:index"] * VERTS_PER_EDGE * 2;
   // edge.source/target 已被 forceLink 替换为节点数据对象引用,直接读坐标
   const sx = edge.source.x || 0;
   const sy = edge.source.y || 0;
@@ -77,7 +77,7 @@ export class EdgesLayer extends Container {
   positions = new Map<string, Float32Array>();
 
   /**
-   * 邻接表,键为节点 id,值为该节点的邻接边数组,边携带 typeIndex(type 分组内下标)
+   * 邻接表,键为节点 id,值为该节点的邻接边数组,边携带 "type:index"(type 分组内下标)
    */
   adjacency = new Map<string, Record<string, any>[]>();
 
@@ -135,7 +135,7 @@ export class EdgesLayer extends Container {
     for (const list of this.types.values()) {
       list.forEach((edge, index) => {
         // 字段名必须避开 index:d3-force 的 link.initialize 会覆写 link.index 为全局下标
-        edge.typeIndex = index;
+        edge["type:index"] = index;
         this.setAdjacency(edge);
       });
     }

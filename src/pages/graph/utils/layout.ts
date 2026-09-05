@@ -17,12 +17,11 @@ export const forceLayout = (options: {
     .alphaDecay(0.03);
   simulation.nodes(options.nodes);
   linkForce.links(options.edges);
-
   const nextTick = (resolve: () => void) => {
     if (!simulation || simulation.alpha() <= simulation.alphaMin()) return resolve();
     for (let i = 0; i < 10; i++) simulation.tick();
     requestAnimationFrame(() => nextTick(resolve));
   };
-
+  simulation.stop();
   return new Promise<void>((resolve) => nextTick(resolve));
 };
